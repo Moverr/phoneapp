@@ -3,7 +3,9 @@ package com.example.phoneproject;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -13,6 +15,8 @@ import android.hardware.SensorManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -22,6 +26,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 
@@ -37,12 +42,14 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import android.provider.ContactsContract;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
@@ -63,6 +70,11 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Sensor sensor;
 
 
+    private static final int REQUEST_CONTACT = 1;
+
+    private Button mContactPick;
+    private Button mContactName;
+
     private FusedLocationProviderClient fusedLocationClient;
     private Location currentLocation;
     String[] perms = {"android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION","android.permission.INTERNET"};
@@ -70,7 +82,8 @@ public class MainActivity extends Activity implements SensorEventListener {
     int permsRequestCode = 200;
 
 
-
+    public static final String SMS_SENT_ACTION = "com.andriodgifts.gift.SMS_SENT_ACTION";
+    public static final String SMS_DELIVERED_ACTION = "com.andriodgifts.gift.SMS_DELIVERED_ACTION";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -83,22 +96,14 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        view = findViewById(R.id.textView);
+       view = findViewById(R.id.textView);
         view.setBackgroundColor(Color.GREEN);
 
         this.SensorActivity();
         lastUpdate = System.currentTimeMillis();
 
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
             requestPermissions(perms, permsRequestCode);
-         //   onRequestPermissionsResult(0,null,null);
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-          //s  Toast.makeText(MainActivity.this, "Enable Permissions " , Toast.LENGTH_SHORT).show();
             return;
         }
         fusedLocationClient.getLastLocation()
@@ -111,8 +116,29 @@ public class MainActivity extends Activity implements SensorEventListener {
                     }
                 });
 
-    }
 
+
+        mContactPick = findViewById(R.id.contact_pick);
+        mContactName = findViewById(R.id.contact_name);
+        // Intent to pick contacts
+        final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+
+        mContactPick.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                startActivityForResult(pickContact, REQUEST_CONTACT);
+            }
+        });
+
+
+
+        sendSMS("+256779820962","iam in trouble");
+        sendSMS("256779820962","iam in trouble");
+        sendSMS("0779820962","iam in trouble");
+
+    }
 
     @Override
     public void onRequestPermissionsResult(int permsRequestCode, String[] permissions, int[] grantResults){
@@ -214,6 +240,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         Toast.makeText(this, address, Toast.LENGTH_LONG).show();
         Toast.makeText(this, address, Toast.LENGTH_LONG).show();
         Toast.makeText(this, address, Toast.LENGTH_SHORT).show();
+
+        sendSMS("077982962","iam in trouble");
     }
 
     public String getAddress(double lat, double lng) {
@@ -284,6 +312,37 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onPause();
         sensorManager.unregisterListener(this);
     }
+
+
+
+    public void sendSMS(String phoneNo, String msg) {
+
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                SmsManager smsManager = SmsManager.getDefault();
+                smsManager.sendTextMessage(phoneNo, null, msg, null, null);
+
+                smsManager.sendTextMessage(phoneNo, null, msg, PendingIntent.getBroadcast(
+                        this, 0, new Intent(SMS_SENT_ACTION), 0), PendingIntent.getBroadcast(this, 0, new Intent(SMS_DELIVERED_ACTION), 0));
+
+                Toast.makeText(getApplicationContext(), "Message Sent",
+                        Toast.LENGTH_LONG).show();
+            } catch (Exception ex) {
+                Toast.makeText(getApplicationContext(), ex.getMessage().toString(),
+                        Toast.LENGTH_LONG).show();
+                ex.printStackTrace();
+            }
+        }
+        else
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            {
+                requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 10);
+            }
+        }
+    }
+
 
 
 }

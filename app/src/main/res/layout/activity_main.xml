@@ -7,7 +7,19 @@
     <TextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="100dp"
         android:text="Shake to get a toast and to switch color" />
+
+    <Button
+        android:id="@+id/contact_pick"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/contact_pick_text" />
+
+    <Button
+        android:id="@+id/contact_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/contact_name_text" />
 
 </LinearLayout>
