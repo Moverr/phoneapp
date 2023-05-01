@@ -1,0 +1,82 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.google.devtools.ksp",
+    "module": "symbol-processing-api",
+    "version": "1.6.0-1.0.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.6.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "symbol-processing-api-1.6.0-1.0.1.jar",
+          "url": "symbol-processing-api-1.6.0-1.0.1.jar",
+          "size": 110595,
+          "sha512": "a380266d31af430d86f0e9151952797ccfb0db708381e0be5806f287db4765aab534d572192ffc2c2db63288d8f85a89eee787fb30bd3426aaff1f42c31514c6",
+          "sha256": "86ed3ed757d266b076f0f8d5f3431a3bf8c5c4090ee8fe5172576cb42af44718",
+          "sha1": "106b5d78133109f86382560d8503b91b1895cace",
+          "md5": "89104a212f6148781c4813247609a6bf"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.6.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "symbol-processing-api-1.6.0-1.0.1.jar",
+          "url": "symbol-processing-api-1.6.0-1.0.1.jar",
+          "size": 110595,
+          "sha512": "a380266d31af430d86f0e9151952797ccfb0db708381e0be5806f287db4765aab534d572192ffc2c2db63288d8f85a89eee787fb30bd3426aaff1f42c31514c6",
+          "sha256": "86ed3ed757d266b076f0f8d5f3431a3bf8c5c4090ee8fe5172576cb42af44718",
+          "sha1": "106b5d78133109f86382560d8503b91b1895cace",
+          "md5": "89104a212f6148781c4813247609a6bf"
+        }
+      ]
+    }
+  ]
+}
