@@ -3,9 +3,11 @@ package com.example.phoneproject;
 import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -25,9 +27,10 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.core.app.ActivityCompat;
-import androidx.room.Room;
+
 
 import com.example.phoneproject.databinding.ActivityMainBinding;
+
 
 
 import android.view.Window;
@@ -50,7 +53,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private ActivityMainBinding binding;
 
-
+    private ContactDatabaseHelper contactDbHelper;
 
     private float acceleration = 0f;
     private float currentAcceleration = 0f;
@@ -61,19 +64,22 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 
     private static final int REQUEST_CONTACT = 1;
+
     private Button mContactPick;
     private Button mContactName;
+
     private FusedLocationProviderClient fusedLocationClient;
     private Location currentLocation;
     String[] perms = {"android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION","android.permission.INTERNET"};
+
     int permsRequestCode = 200;
+    private String selectedContactName;
+    private String selectedContactNumber;
     public static final String SMS_SENT_ACTION = "com.andriodgifts.gift.SMS_SENT_ACTION";
     public static final String SMS_DELIVERED_ACTION = "com.andriodgifts.gift.SMS_DELIVERED_ACTION";
-    private AppDatabase appDatabase; // app's local database
-    private int contactCounter = 0; // counter to limit number of contacts
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -89,10 +95,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         this.SensorActivity();
         lastUpdate = System.currentTimeMillis();
 
-        // Initialize the app's local database
-        appDatabase = Room.databaseBuilder(getApplicationContext(),
-                AppDatabase.class, "my-database").build();
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(perms, permsRequestCode);
             return;
@@ -107,67 +109,106 @@ public class MainActivity extends Activity implements SensorEventListener {
                     }
                 });
 
+        contactDbHelper =new ContactDatabaseHelper(this);
         mContactPick = findViewById(R.id.contact_pick);
         mContactName = findViewById(R.id.contact_name);
+        Intent  pickcontact;
 
-        final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
 
-        mContactPick.setOnClickListener(new View.OnClickListener() {
+        mContactPick.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view)
+            {
+                final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+                startActivityForResult(pickContact, REQUEST_CONTACT);
+            }
+        });
+        mContactName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (contactCounter < 5) {
-                    startActivityForResult(pickContact, REQUEST_CONTACT);
-                } else {
-                    Toast.makeText(MainActivity.this, "You have reached the limit of 5 contacts.", Toast.LENGTH_SHORT).show();
+                // Show the selected contact name and number
+                if (selectedContactName != null && selectedContactNumber != null) {
+                    String message = "Selected Contact: " + selectedContactName + " " + selectedContactNumber;
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
                 }
             }
         });
+
+
     }
+    private static final int MAX_CONTACTS = 5; // Maximum number of contacts user can select
+    private int numSelectedContacts = 0; // Counter to keep track of number of selected contacts
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQUEST_CONTACT && resultCode == Activity.RESULT_OK) {
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == REQUEST_CONTACT && data != null) {
             Uri contactUri = data.getData();
-            String[] projection = {ContactsContract.CommonDataKinds.Phone.NUMBER, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME};
+
+            // Query the content provider to get the contact name and number
+            String[] projection = new String[] {
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER
+            };
 
             Cursor cursor = getContentResolver().query(contactUri, projection, null, null, null);
+
             if (cursor != null && cursor.moveToFirst()) {
-                String number = cursor.getString(0);
-                String name = cursor.getString(1);
+                int nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+                int numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
 
-                // Store the picked contact in the app's local database
-                Contact contact = new Contact(name, number);
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        appDatabase.contactDao().insert(contact);
-                    }
-                }).start();
+                String selectedContactName = cursor.getString(nameIndex);
+                String selectedContactNumber = cursor.getString(numberIndex);
 
-                // Update the UI to show the picked contact's name
-                mContactName.setText(name);
+                if (numSelectedContacts >= MAX_CONTACTS) {
+                    // Show an error message to the user
+                    Toast.makeText(MainActivity.this, "You can select only " + MAX_CONTACTS + " contacts.", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Create a new contact object with the selected contact name and number
+                    Contact newContact = new Contact(selectedContactName, selectedContactNumber);
+                    // Insert the new contact object into the database
+                    ContactDbHelper contactDbHelper = new ContactDbHelper(this);
+                    SQLiteDatabase db = contactDbHelper.getWritableDatabase();
+                    ContentValues values = new ContentValues();
+                    values.put(ContactContract.ContactEntry.COLUMN_NAME_NAME, newContact.getName());
+                    values.put(ContactContract.ContactEntry.COLUMN_NAME_NUMBER, newContact.getNumber());
+                    long newRowId = db.insert(ContactContract.ContactEntry.TABLE_NAME, null, values);
+                    db.close();
 
+                    // Increment the counter and show the selected contact name and number
+                    numSelectedContacts++;
+                    String message = "Selected Contact: " + selectedContactName + " " + selectedContactNumber;
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            if (cursor != null) {
                 cursor.close();
             }
         }
     }
 
 
+
+
     @Override
     public void onRequestPermissionsResult(int permsRequestCode, String[] permissions, int[] grantResults){
 
-       switch(permsRequestCode){
+        switch(permsRequestCode){
 
-           case 200:
+            case 200:
 
                 boolean locationAccepted = grantResults[0]==PackageManager.PERMISSION_GRANTED;
-               boolean cameraAccepted = grantResults[1]==PackageManager.PERMISSION_GRANTED;
+                boolean cameraAccepted = grantResults[1]==PackageManager.PERMISSION_GRANTED;
 
-              break;
+                break;
 
-    }
+        }
 
     }
 
@@ -184,9 +225,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER  ) {
 
-          //  Toast.makeText(this, ""+count, Toast.LENGTH_SHORT).show();
+            //  Toast.makeText(this, ""+count, Toast.LENGTH_SHORT).show();
 
-                //count = 0;
+            //count = 0;
             try {
                 getAccelerometer(event);
             } catch (InterruptedException e) {
@@ -369,3 +410,4 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 
 }
+

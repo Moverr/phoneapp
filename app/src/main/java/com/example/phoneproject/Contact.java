@@ -1,19 +1,20 @@
 package com.example.phoneproject;
 
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-
-@Entity(tableName = "contacts")
 public class Contact {
-    @PrimaryKey(autoGenerate = true)
-    public int id;
+    private String name;
+    private String number;
 
-    public String name;
-
-    public String phoneNumber;
-
-    public Contact(String name, String phoneNumber) {
+    public Contact(String name, String number) {
         this.name = name;
-        this.phoneNumber = phoneNumber;
+        this.number = number;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getNumber() {
+        return number;
     }
 }
+
