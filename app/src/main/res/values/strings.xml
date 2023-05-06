@@ -12,4 +12,8 @@
 
     <string name="contact_pick_text">Pick Contact</string>
     <string name="contact_name_text">Contact Name</string>
+    <string name="title_activity_manage_contacts">ManageContacts</string>
+    <string name="create_contact">create contact</string>
+    <string name="delete_contact">Delete Contact</string>
+    <string name="manage_contacts">Manage Contacts</string>
 </resources>

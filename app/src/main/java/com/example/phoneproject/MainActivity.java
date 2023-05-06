@@ -3,6 +3,7 @@ package com.example.phoneproject;
 import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -20,27 +21,38 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
+import com.example.phoneproject.dtos.Contact;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+
+import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 
 import com.example.phoneproject.databinding.ActivityMainBinding;
 
 
-
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
+
 import android.provider.ContactsContract;
 
 public class MainActivity extends Activity implements SensorEventListener {
@@ -51,7 +63,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private long lastUpdate;
 
 
-    private ActivityMainBinding binding;
 
     private ContactDatabaseHelper contactDbHelper;
 
@@ -65,18 +76,23 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private static final int REQUEST_CONTACT = 1;
 
-    private Button mContactPick;
+    private Button manageContactsButton;
     private Button mContactName;
 
     private FusedLocationProviderClient fusedLocationClient;
     private Location currentLocation;
-    String[] perms = {"android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION","android.permission.INTERNET"};
+    String[] perms = {"android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION", "android.permission.INTERNET"};
 
     int permsRequestCode = 200;
     private String selectedContactName;
     private String selectedContactNumber;
     public static final String SMS_SENT_ACTION = "com.andriodgifts.gift.SMS_SENT_ACTION";
     public static final String SMS_DELIVERED_ACTION = "com.andriodgifts.gift.SMS_DELIVERED_ACTION";
+
+private   List<String> items;
+
+    ArrayAdapter<String> itemsAdapter ;
+    private ListView recyclerView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -109,17 +125,18 @@ public class MainActivity extends Activity implements SensorEventListener {
                     }
                 });
 
-        contactDbHelper =new ContactDatabaseHelper(this);
-        mContactPick = findViewById(R.id.contact_pick);
-        mContactName = findViewById(R.id.contact_name);
-        Intent  pickcontact;
+        contactDbHelper = new ContactDatabaseHelper(this);
+        manageContactsButton = findViewById(R.id.addContact);
+        mContactName = findViewById(R.id.deleteContact);
+        Intent pickcontact;
+
+        Intent contacts = new Intent(this, ManageContacts.class);
+        final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
 
 
-        mContactPick.setOnClickListener(new View.OnClickListener(){
+        manageContactsButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view)
-            {
-                final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+            public void onClick(View view) {
                 startActivityForResult(pickContact, REQUEST_CONTACT);
             }
         });
@@ -134,14 +151,46 @@ public class MainActivity extends Activity implements SensorEventListener {
             }
         });
 
+        items = new ArrayList<>();
+
+
+      itemsAdapter =
+                new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, items);
+
+        recyclerView = (ListView)   findViewById(R.id.listview);
+
+       // MyListAdapter adapter = new MyListAdapter(myListData);
+       // recyclerView.setHasFixedSize(true);
+       // recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(itemsAdapter);
 
     }
+
+    private static final int REQUEST_READ_CONTACTS_PERMISSION = 0;
+
+    private boolean hasContactsPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) ==
+                PackageManager.PERMISSION_GRANTED;
+    }
+
+
+    private void requestContactsPermission() {
+        if (!hasContactsPermission()) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_CONTACTS}, REQUEST_READ_CONTACTS_PERMISSION);
+        }
+    }
+
+
     private static final int MAX_CONTACTS = 5; // Maximum number of contacts user can select
     private int numSelectedContacts = 0; // Counter to keep track of number of selected contacts
 
-    @Override
+
+   /* @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        Toast.makeText(this, ""+resultCode, Toast.LENGTH_SHORT).show();
 
         if (resultCode != Activity.RESULT_OK) {
             return;
@@ -157,6 +206,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             };
 
             Cursor cursor = getContentResolver().query(contactUri, projection, null, null, null);
+
 
             if (cursor != null && cursor.moveToFirst()) {
                 int nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
@@ -187,43 +237,151 @@ public class MainActivity extends Activity implements SensorEventListener {
                 }
             }
 
+
             if (cursor != null) {
                 cursor.close();
             }
         }
     }
 
+*/
 
-
+    List<Contact> contacts =new ArrayList<>();
 
     @Override
-    public void onRequestPermissionsResult(int permsRequestCode, String[] permissions, int[] grantResults){
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+     //   super.onActivityResult(requestCode, resultCode, data);
 
-        switch(permsRequestCode){
+        //if (resultCode != Activity.RESULT_OK) return;
 
-            case 200:
+        if (requestCode == REQUEST_CONTACT && data != null) {
+            Uri contactUri = data.getData();
 
-                boolean locationAccepted = grantResults[0]==PackageManager.PERMISSION_GRANTED;
-                boolean cameraAccepted = grantResults[1]==PackageManager.PERMISSION_GRANTED;
+            // Specify which fields you want
+            // your query to return values for
+            String[] queryFields = new String[]{
+                    ContactsContract.Contacts.DISPLAY_NAME
+            };
 
+            // Perform your query - the contactUri
+            // is like a "where" clause here
+            Cursor cursor = this.getContentResolver()
+                    .query(contactUri, queryFields, null, null, null);
+            try {
+                // Double-check that you
+                // actually got results
+                if (cursor.getCount() == 0) return;
+
+                // Pull out the first column of
+                // the first row of data
+                // that is your contact's name
+                cursor.moveToFirst();
+
+
+
+
+                String name = cursor.getString(0);
+
+                Toast.makeText(this, name, Toast.LENGTH_SHORT).show();
+                String phone =  this.getPhoneNumber(name);
+               // mContactName.setText(name);
+                Contact cc= new Contact(name,phone);
+                contacts.add(cc);
+                items.add(phone);
+
+
+                itemsAdapter.notifyDataSetChanged();
+
+                Toast.makeText(this, ""+items.size(), Toast.LENGTH_SHORT).show();
+             //   itemsAdapter.notifyAll();
+               // recyclerView.setAdapter(itemsAdapter);
+            } finally {
+                cursor.close();
+            }
+
+        }
+    }
+
+
+    public void remove(String phone){
+       contacts =  contacts.stream().filter(x->x.getNumber() != phone).collect(Collectors.toList());
+      //  saveData();
+    }
+
+    public void loadData(){
+
+    }
+
+    public void saveData(){
+        ContactDbHelper contactDbHelper = new ContactDbHelper(this);
+
+        if(this.contacts !=null &&this.contacts.size() > 0){
+            SQLiteDatabase db = contactDbHelper.getWritableDatabase();
+         //todo: delelte    db.delete();
+            for(Contact cc:this.contacts){
+                //todo:insert
+                ContentValues values = new ContentValues();
+                values.put(ContactContract.ContactEntry.COLUMN_NAME_NAME, cc.getName());
+                values.put(ContactContract.ContactEntry.COLUMN_NAME_NUMBER, cc.getNumber());
+                long newRowId = db.insert(ContactContract.ContactEntry.TABLE_NAME, null, values);
+
+            }
+
+            db.close();
+        }
+
+
+
+    }
+
+    private String getPhoneNumber(String  NAME){
+        String number = "";
+        ContentResolver cr = this.getContentResolver();
+        Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
+                "DISPLAY_NAME = '" + NAME + "'", null, null);
+        if (cursor.moveToFirst()) {
+            String contactId =   cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+            //
+            //  Get all phone numbers.
+            //
+            Cursor phones = cr.query(Phone.CONTENT_URI, null,
+                    Phone.CONTACT_ID + " = " + contactId, null, null);
+            while (phones.moveToNext()) {
+                  number = phones.getString(phones.getColumnIndex(Phone.NUMBER));
+                Toast.makeText(this, number, Toast.LENGTH_SHORT).show();
                 break;
+            }
+            phones.close();
+        }
+        cursor.close();
 
+        return number;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_READ_CONTACTS_PERMISSION && grantResults.length > 0) {
+            //   updateButton(grantResults[0] == PackageManager.PERMISSION_GRANTED);
         }
 
     }
 
 
-
-
     public void SensorActivity() {
-        sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
     }
+
     int count = 0;
+
     @Override
     public void onSensorChanged(SensorEvent event) {
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER  ) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
 
             //  Toast.makeText(this, ""+count, Toast.LENGTH_SHORT).show();
 
@@ -240,7 +398,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
 
-
     private void getAccelerometer(SensorEvent event) throws InterruptedException {
 
         listenToSensors(event);
@@ -249,7 +406,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     int vertical_count = 0;
     int horizontal_count = 0;
-    boolean isHorinzontal =  false;
+    boolean isHorinzontal = false;
+
     private void listenToSensors(SensorEvent event) throws InterruptedException {
 
         boolean status = false;
@@ -257,7 +415,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         String message = "";
 
         if (isPhoneVertical(event)) {
-            if(isHorinzontal == false){
+            if (isHorinzontal == false) {
 
                 vertical_count = vertical_count + 1;
                 view.setBackgroundColor(Color.GREEN);
@@ -267,9 +425,8 @@ public class MainActivity extends Activity implements SensorEventListener {
             }
 
 
-
         } else {
-            if(isHorinzontal == true) {
+            if (isHorinzontal == true) {
                 horizontal_count = horizontal_count + 1;
                 view.setBackgroundColor(Color.RED);
                 message = "horizontal_count" + horizontal_count;
@@ -280,32 +437,33 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         //if(!message.isEmpty())
         //    Toast.makeText(this, "HOR : "+horizontal_count, Toast.LENGTH_SHORT).show();
-        if(vertical_count > 3 ){
+        if (vertical_count > 3) {
             Toast.makeText(this, "Make Alarm", Toast.LENGTH_SHORT).show();
-            vertical_count = horizontal_count =  0;
+            vertical_count = horizontal_count = 0;
             this.makeAlam();
-
-
 
 
         }
     }
 
 
-    private void makeAlam(){
+    private void makeAlam() {
         //todo: send notification
-        if(currentLocation != null) {
+        if (currentLocation != null) {
             Toast.makeText(MainActivity.this, "" + currentLocation.getLatitude(), Toast.LENGTH_SHORT).show();
         }
 
 
         String location = getAddress(currentLocation.getLatitude(), currentLocation.getLongitude());
         String message = "I am in trouble. Please reach me urgently at " + location;
+        if(contacts!= null && contacts.size()>0){
+            contacts.stream().forEach(x->sendSMS(x.getNumber(),message));
+        }
+        /*
         sendSMS("", message);
         sendSMS("", message);
         sendSMS("", message);
-
-
+*/
 
     }
 
@@ -326,7 +484,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             Log.v("IGA", "Address" + add);
             // Toast.makeText(this, "Address=>" + add,
             // Toast.LENGTH_SHORT).show();
-            return  add;
+            return add;
 
             // TennisAppActivity.showDialog(add);
         } catch (IOException e) {
@@ -334,13 +492,12 @@ public class MainActivity extends Activity implements SensorEventListener {
             e.printStackTrace();
             Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-        return  "";
+        return "";
     }
 
 
-
-
     private double maxVertical = 3.0;
+
     private boolean isPhoneVertical(SensorEvent event) {
         float[] values = event.values;
         double y = values[1];
@@ -356,9 +513,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
-
-
-
 
 
     @Override
@@ -377,6 +531,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onPause();
         sensorManager.unregisterListener(this);
     }
+
     public void sendSMS(String phoneNo, String msg) {
 
 
@@ -385,8 +540,8 @@ public class MainActivity extends Activity implements SensorEventListener {
                 SmsManager smsManager = SmsManager.getDefault();
                 smsManager.sendTextMessage(phoneNo, null, msg, null, null);
 
-                smsManager.sendTextMessage(phoneNo, null, msg, PendingIntent.getBroadcast(
-                        this, 0, new Intent(SMS_SENT_ACTION), 0), PendingIntent.getBroadcast(this, 0, new Intent(SMS_DELIVERED_ACTION), 0));
+              //  smsManager.sendTextMessage(phoneNo, null, msg, PendingIntent.getBroadcast(
+               //         this, 0, new Intent(SMS_SENT_ACTION), 0), PendingIntent.getBroadcast(this, 0, new Intent(SMS_DELIVERED_ACTION), 0));
 
                 Toast.makeText(getApplicationContext(), "Message Sent",
                         Toast.LENGTH_LONG).show();
@@ -395,18 +550,12 @@ public class MainActivity extends Activity implements SensorEventListener {
                         Toast.LENGTH_LONG).show();
                 ex.printStackTrace();
             }
-        }
-        else
-        {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            {
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 10);
             }
         }
     }
-
-
-
 
 
 }

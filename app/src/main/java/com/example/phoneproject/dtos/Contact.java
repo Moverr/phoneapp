@@ -1,4 +1,4 @@
-package com.example.phoneproject;
+package com.example.phoneproject.dtos;
 
 public class Contact {
     private String name;
