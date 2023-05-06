@@ -54,8 +54,8 @@ public class ContactDatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME, null);
         if (cursor.moveToFirst()) {
             do {
-                @SuppressLint("Range") String name = cursor.getString(cursor.getColumnIndex(COLUMN_NAME));
-                @SuppressLint("Range") String number = cursor.getString(cursor.getColumnIndex(COLUMN_NUMBER));
+               @SuppressLint("Range") String name = cursor.getString(cursor.getColumnIndex(COLUMN_NAME));
+               @SuppressLint("Range") String number = cursor.getString(cursor.getColumnIndex(COLUMN_NUMBER));
                 Contact contact = new Contact(name, number);
                 contacts.add(contact);
             } while (cursor.moveToNext());

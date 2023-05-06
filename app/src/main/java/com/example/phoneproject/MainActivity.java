@@ -119,8 +119,8 @@ public class MainActivity extends Activity implements SensorEventListener {
             @Override
             public void onClick(View view)
             {
-                final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
-                startActivityForResult(pickContact, REQUEST_CONTACT);
+              //  final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+               // startActivityForResult(pickContact, REQUEST_CONTACT);
             }
         });
         mContactName.setOnClickListener(new View.OnClickListener() {
@@ -172,7 +172,6 @@ public class MainActivity extends Activity implements SensorEventListener {
                     // Create a new contact object with the selected contact name and number
                     Contact newContact = new Contact(selectedContactName, selectedContactNumber);
                     // Insert the new contact object into the database
-                    ContactDbHelper contactDbHelper = new ContactDbHelper(this);
                     SQLiteDatabase db = contactDbHelper.getWritableDatabase();
                     ContentValues values = new ContentValues();
                     values.put(ContactContract.ContactEntry.COLUMN_NAME_NAME, newContact.getName());
